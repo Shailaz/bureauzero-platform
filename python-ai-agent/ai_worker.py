@@ -30,18 +30,18 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 async def startup_event():
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    if not os.environ.get("GEMINI_API_KEY"):
+    if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")):
         logging.getLogger(__name__).warning(
-            "GEMINI_API_KEY is unset; document extraction and legacy DOB correction are unavailable. "
+            "GEMINI_API_KEY/GOOGLE_API_KEY is unset; document extraction and legacy DOB correction are unavailable. "
             "Live myScheme discovery can still run."
         )
 
 def get_llm_client():
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="GEMINI_API_KEY is required for document extraction and DOB correction.",
+            detail="Set GEMINI_API_KEY (or GOOGLE_API_KEY) on the AI worker to enable document extraction and DOB correction.",
         )
     return genai.Client(api_key=api_key)
 
@@ -97,7 +97,9 @@ class ExtractedCitizenSchema(BaseModel):
         validation_alias=AliasChoices("recommendedScheme", "recommended_scheme")
     )
 
-    model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
+    # Google's structured-output API rejects additionalProperties in the
+    # response schema, so keep this extraction schema to supported fields.
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
 
 class SelfCorrectionSchema(BaseModel):
     reasoning: str

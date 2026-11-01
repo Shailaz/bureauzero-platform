@@ -24,6 +24,7 @@ services:
       SPRING_BOOT_BASE_URL: http://app:8080
       PLAYWRIGHT_HEADLESS: "true"
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
 
 volumes:

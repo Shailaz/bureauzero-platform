@@ -92,6 +92,10 @@ public class MissionControlController {
 
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<Map<String, String>> handleAiWorkerError(RestClientResponseException exception) {
+        if (exception.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Gemini credentials are missing. Set GEMINI_API_KEY (or GOOGLE_API_KEY) on the AI worker service, then redeploy it."));
+        }
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("error", "The AI worker rejected the request (HTTP "
                         + exception.getStatusCode().value() + "). Check the document format, profile fields, and worker logs."));
