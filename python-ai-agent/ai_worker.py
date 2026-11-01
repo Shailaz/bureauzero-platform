@@ -48,7 +48,7 @@ def get_llm_client():
     )
 
 def get_llm_model():
-    return os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+    return os.environ.get("OPENROUTER_MODEL", "gpt-4o-mini")
 
 def extract_json_content(response):
     content = response.choices[0].message.content
