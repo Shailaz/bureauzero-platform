@@ -15,7 +15,7 @@ The `.railway/railway.ts` file defines two services and a persistent volume:
    railway login
    railway init
    ```
-3. In the Railway environment, create a shared variable named `OPENROUTER_API_KEY`. Set it to your OpenRouter key to enable document extraction and DOB correction. The config defaults to the `openrouter/free` model route; change `OPENROUTER_MODEL` in `.railway/railway.ts` if you want a specific model ID. Leave the API key unset if those features are not part of the demo.
+3. In the Railway environment, create a shared variable named `OPENROUTER_API_KEY` and set it to your OpenRouter key. Document extraction and DOB correction use `openai/gpt-4.1-mini` through `https://openrouter.ai/api/v1/chat/completions`; the endpoint and model can be changed with `OPENAI_URL` and `OPENAI_MODEL`. Leave the API key unset if those features are not part of the demo.
 4. Choose `us-west2` for the app and worker service region to match the persistent volume region in the config. If you choose another region, change `region` in `.railway/railway.ts` to the same region before applying.
 5. Preview and apply the Railway configuration from the repository root:
 

@@ -4,12 +4,12 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-teal.svg)](https://fastapi.tiangolo.com/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green.svg)](https://spring.io/projects/spring-boot)
 [![Playwright](https://img.shields.io/badge/Playwright-Async-orange.svg)](https://playwright.dev/python/)
-[![Gemini AI](https://img.shields.io/badge/Google%20Gemini-3.8%20Flash-purple.svg)](https://ai.google.dev/)
+[![OpenRouter](https://img.shields.io/badge/LLM-OpenRouter%20%7C%20GPT--4.1--mini-purple.svg)](https://openrouter.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **BureauZero** is a full-stack, autonomous AI-driven platform engineered to eliminate bureaucratic friction and automate welfare claim submissions on complex legacy government portals.
 
-By integrating a secure Spring Boot control dashboard with a high-performance Python FastAPI state engine, headless browser automation (Playwright), and **Google Gemini 3.8 Flash**, BureauZero autonomously handles DOM obstacles, validates citizen data, recovers from portal validation errors in real-time, and generates cryptographic audit receipts.
+By integrating a secure Spring Boot control dashboard with a high-performance Python FastAPI state engine, headless browser automation (Playwright), and **OpenAI GPT-4.1 mini through OpenRouter**, BureauZero autonomously handles DOM obstacles, validates citizen data, recovers from portal validation errors in real-time, and generates cryptographic audit receipts.
 
 ---
 
@@ -30,7 +30,7 @@ BureauZero uses a decoupled micro-architecture designed for resilience and audit
 +-----------------------------------------------------------------+
 |           Python FastAPI AI & Playwright State Engine           |
 |                                                                 |
-|  1. Document Data Extraction (Gemini 3.8 Flash)                 |
+|  1. Document Data Extraction (OpenAI GPT-4.1 mini via OpenRouter) |
 |  2. Headless Browser Navigation & DOM Inspection (Playwright)   |
 |  3. Obstacle Bypass (Dismissing Modal Intercepts)               |
 |  4. Self-Correction Loop (Catching 422/DOM Errors & Fixing DOB) |
@@ -62,10 +62,10 @@ bureauzero-platform/
 
 ## 🚀 Key Features & Capabilities
 
-- **Intelligent Document Parsing:** Upload citizen ID cards, certificates, or identity proofs to extract structured demographic parameters using Gemini 3.8 Flash with rigid Pydantic JSON schema enforcement.
+- **Intelligent Document Parsing:** Upload citizen ID cards, certificates, or identity proofs to extract structured demographic parameters using OpenAI GPT-4.1 mini through OpenRouter with Pydantic JSON schema validation.
 - **Autonomous DOM Navigation:** Headless or headed Chromium automation via Playwright to navigate portal application flows reliably.
 - **Dynamic Obstacle Bypassing:** Automatically detects and dismisses intrusive layout obstacles, such as blocking Gazette Circular modal popups, that disrupt standard web scrapers.
-- **AI-Powered Self-Correction Loop:** When legacy portal validation rejects input fields (e.g., non-standard Date of Birth formats), the agent captures the exact DOM error text, queries Gemini 3.8 Flash for a contextual format correction, patches the input field, and resubmits seamlessly.
+- **AI-Powered Self-Correction Loop:** When legacy portal validation rejects input fields (e.g., non-standard Date of Birth formats), the agent captures the exact DOM error text, queries OpenAI GPT-4.1 mini through OpenRouter for a contextual format correction, patches the input field, and resubmits seamlessly.
 - **Cryptographic Audit Signatures:** Scrapes official transaction hashes, registry statuses, and unique receipt IDs upon successful filing.
 
 ## 📊 Core API Endpoints
@@ -104,7 +104,7 @@ Example response:
 
 - Java Development Kit (JDK 17+) and Maven
 - Python 3.10+ installed and added to system PATH
-- Google Gemini API Key (`GEMINI_API_KEY`)
+- OpenRouter API key (`OPENROUTER_API_KEY`)
 
 ### Step 1: Clone the Repository
 
@@ -128,12 +128,14 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-### Step 3: Configure Your Gemini API Key
+### Step 3: Configure the OpenRouter API
 
-Set your Gemini API key as an environment variable in your PowerShell session.
+Copy `.env.example` to `.env` and set your OpenRouter API key. The defaults select the requested endpoint and model.
 
 ```powershell
-$env:GEMINI_API_KEY = "your_actual_api_key_here"
+$env:OPENROUTER_API_KEY = "your_actual_api_key_here"
+$env:OPENAI_URL = "https://openrouter.ai/api/v1/chat/completions"
+$env:OPENAI_MODEL = "openai/gpt-4.1-mini"
 ```
 
 ### Step 4: Run the AI State Engine
@@ -152,7 +154,7 @@ with Windows Selector Event Loop optimizations.
 
 ## 💡 Tech Stack
 
-- **AI & Machine Learning:** Google GenAI SDK (`gemini-3.8-flash`), Pydantic structural validation
+- **AI & Machine Learning:** OpenAI-compatible SDK via OpenRouter (`openai/gpt-4.1-mini`), Pydantic structural validation
 - **Browser Automation:** Playwright Async API for Python, Chromium
 - **Backend State Engine:** Python, FastAPI, Uvicorn
 - **Control Center Dashboard:** Java, Spring Boot, Thymeleaf

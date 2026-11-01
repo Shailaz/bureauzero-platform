@@ -38,9 +38,16 @@ def get_llm_client():
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         raise RuntimeError("OPENROUTER_API_KEY is required for document extraction and legacy date correction.")
+    endpoint = os.environ.get(
+        "OPENAI_URL", "https://openrouter.ai/api/v1/chat/completions"
+    ).rstrip("/")
+    # The OpenAI SDK appends /chat/completions itself, so accept the full
+    # configured endpoint while passing only its API base URL to the client.
+    if endpoint.endswith("/chat/completions"):
+        endpoint = endpoint[: -len("/chat/completions")]
     return OpenAI(
         api_key=api_key,
-        base_url="https://openrouter.ai/api/v1",
+        base_url=endpoint,
         default_headers={
             "HTTP-Referer": os.environ.get("OPENROUTER_SITE_URL", "http://localhost:8080"),
             "X-Title": os.environ.get("OPENROUTER_APP_NAME", "BureauZero"),
@@ -48,7 +55,7 @@ def get_llm_client():
     )
 
 def get_llm_model():
-    return os.environ.get("OPENROUTER_MODEL", "gpt-4o-mini")
+    return os.environ.get("OPENAI_MODEL", "openai/gpt-4.1-mini")
 
 def extract_json_content(response):
     content = response.choices[0].message.content

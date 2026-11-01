@@ -46,7 +46,8 @@ export default defineRailway(() => {
       SPRING_BOOT_BASE_URL: "http://${{app.RAILWAY_PRIVATE_DOMAIN}}:${{app.PORT}}",
       PLAYWRIGHT_HEADLESS: "true",
       OPENROUTER_API_KEY: "${{shared.OPENROUTER_API_KEY}}",
-      OPENROUTER_MODEL: "openrouter/free",
+      OPENAI_URL: "https://openrouter.ai/api/v1/chat/completions",
+      OPENAI_MODEL: "openai/gpt-4.1-mini",
     },
     deploy: {
       restartPolicyType: "ON_FAILURE",
