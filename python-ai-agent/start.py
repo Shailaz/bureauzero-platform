@@ -11,7 +11,7 @@ import os
 if __name__ == "__main__":
     uvicorn.run(
         "ai_worker:app",
-        host=os.environ.get("AI_WORKER_HOST", "127.0.0.1"),
-        port=int(os.environ.get("AI_WORKER_PORT", "8001")),
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", os.environ.get("AI_WORKER_PORT", "8001"))),
         reload=False,
     )
