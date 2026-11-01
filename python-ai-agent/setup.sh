@@ -8,4 +8,4 @@ python3 -m venv .venv
 .venv/bin/python -m playwright install chromium
 
 echo "Python dependencies and Chromium are ready."
-echo "Set GEMINI_API_KEY to enable document extraction and legacy date correction."
+echo "Set OPENROUTER_API_KEY to enable document extraction and legacy date correction."

@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: ../spring-boot-core
+    restart: unless-stopped
+    environment:
+      PYTHON_AI_URL: http://ai-worker:8001
+      BUREAUZERO_DATA_DIR: /var/lib/bureauzero
+      H2_CONSOLE_ENABLED: "false"
+    volumes:
+      - bureauzero-data:/var/lib/bureauzero
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      - ai-worker
+
+  ai-worker:
+    build:
+      context: ../python-ai-agent
+    restart: unless-stopped
+    environment:
+      AI_WORKER_HOST: 0.0.0.0
+      AI_WORKER_PORT: "8001"
+      SPRING_BOOT_BASE_URL: http://app:8080
+      PLAYWRIGHT_HEADLESS: "true"
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/free}
+
+volumes:
+  bureauzero-data:

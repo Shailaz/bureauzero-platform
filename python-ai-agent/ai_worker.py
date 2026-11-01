@@ -14,8 +14,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from google import genai
-from google.genai import types
+from openai import OpenAI
 from playwright.async_api import async_playwright
 
 # Resolve the shared repository-level .env no matter which directory starts
@@ -29,17 +28,38 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 async def startup_event():
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    if not os.environ.get("GEMINI_API_KEY"):
+    if not os.environ.get("OPENROUTER_API_KEY"):
         logging.getLogger(__name__).warning(
-            "GEMINI_API_KEY is unset; document extraction and legacy DOB correction are unavailable. "
+            "OPENROUTER_API_KEY is unset; document extraction and legacy DOB correction are unavailable. "
             "Live myScheme discovery can still run."
         )
 
-def get_gemini_client():
-    api_key = os.environ.get("GEMINI_API_KEY")
+def get_llm_client():
+    api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is required for document extraction and legacy date correction.")
-    return genai.Client(api_key=api_key)
+        raise RuntimeError("OPENROUTER_API_KEY is required for document extraction and legacy date correction.")
+    return OpenAI(
+        api_key=api_key,
+        base_url="https://openrouter.ai/api/v1",
+        default_headers={
+            "HTTP-Referer": os.environ.get("OPENROUTER_SITE_URL", "http://localhost:8080"),
+            "X-Title": os.environ.get("OPENROUTER_APP_NAME", "BureauZero"),
+        },
+    )
+
+def get_llm_model():
+    return os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+
+def extract_json_content(response):
+    content = response.choices[0].message.content
+    if not content:
+        raise RuntimeError("The selected OpenRouter model returned an empty response.")
+    if isinstance(content, list):
+        content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
+    text = content.strip()
+    if text.startswith("```"):
+        text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    return json.loads(text)
 
 class CitizenSchema(BaseModel):
     fullName: str
@@ -52,6 +72,8 @@ class CitizenSchema(BaseModel):
     citizenIdNumber: str
     recommendedScheme: str
 
+    model_config = {"extra": "forbid"}
+
 class SelfCorrectionSchema(BaseModel):
     reasoning: str
     corrected_dob: str
@@ -59,8 +81,7 @@ class SelfCorrectionSchema(BaseModel):
 @app.post("/ai/extract-profile")
 async def extract_profile(file: UploadFile = File(...)):
     raw_bytes = await file.read()
-    client = get_gemini_client()
-
+    client = get_llm_client()
     prompt = (
         "Extract the citizen's demographic details from this official document or ID card. "
         "If any field is missing on the document, infer a realistic valid value based on visible context. "
@@ -70,16 +91,34 @@ async def extract_profile(file: UploadFile = File(...)):
         "'Digital India Student Hardware Grant', or 'Mukhyamantri Yuva Swarojgar Subsidy'."
     )
 
-    resp = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=[types.Part.from_bytes(data=raw_bytes, mime_type=file.content_type), prompt],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=CitizenSchema,
-            temperature=0.1
-        )
+    mime_type = file.content_type or "application/octet-stream"
+    data_url = f"data:{mime_type};base64,{base64.b64encode(raw_bytes).decode('ascii')}"
+    if mime_type == "application/pdf":
+        document_part = {
+            "type": "file",
+            "file": {"filename": file.filename or "document.pdf", "file_data": data_url},
+        }
+    elif mime_type.startswith("image/"):
+        document_part = {"type": "image_url", "image_url": {"url": data_url}}
+    else:
+        raise ValueError("Upload a PDF or image file for profile extraction.")
+    response = client.chat.completions.create(
+        model=get_llm_model(),
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                document_part,
+            ],
+        }],
+        response_format={"type": "json_object"},
+        temperature=0.1,
+        extra_body={
+            "plugins": [{"id": "file-parser", "pdf": {"engine": "cloudflare-ai"}}]
+        } if mime_type == "application/pdf" else None,
     )
-    return {"status": "EXTRACTED", "profile": json.loads(resp.text)}
+    profile = CitizenSchema.model_validate(extract_json_content(response))
+    return {"status": "EXTRACTED", "profile": profile.model_dump()}
 
 class AgentJobRequest(BaseModel):
     profile: dict
@@ -172,8 +211,9 @@ async def execute_workflow(req: AgentJobRequest):
             }
 
         # MODE 1: Autonomous Execution on Legacy Gov Portal
-        client = get_gemini_client()
-        target_url = "http://127.0.0.1:8080/gov-portal/apply"
+        client = get_llm_client()
+        spring_base_url = os.environ.get("SPRING_BOOT_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
+        target_url = f"{spring_base_url}/gov-portal/apply"
         await page.goto(target_url)
         await record_step(page, 1, "Navigated to Legacy Portal. Inspecting DOM tree for blocking overlays...")
 
@@ -199,36 +239,35 @@ async def execute_workflow(req: AgentJobRequest):
         await record_step(page, 4, f"Populated all 9 legacy form fields (DOB entered as '{p['dob']}'). Attempting initial form submission...")
         await page.click("#submitPortalBtn")
 
-        # STEP 4: Autonomous DOM Error Detection & Gemini Self-Correction Loop
+        # STEP 4: Autonomous DOM Error Detection & OpenRouter Self-Correction Loop
         err_banner = page.locator("#validation-error")
         if await err_banner.is_visible():
             err_text = await err_banner.inner_text()
-            await record_step(page, 5, f"DOM VALIDATION ERROR DETECTED: '{err_text}'. Invoking Gemini self-correction agent...")
+            await record_step(page, 5, f"DOM VALIDATION ERROR DETECTED: '{err_text}'. Invoking OpenRouter self-correction agent...")
 
-            fix_resp = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=(
+            correction_prompt = (
                     f"The legacy government portal rejected the form with this exact DOM error: '{err_text}'. "
                     f"The current DOB value entered was '{p['dob']}'. "
-                    "Convert this date into the exact format demanded by the portal error message."
-                ),
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=SelfCorrectionSchema,
-                    temperature=0.0
-                )
+                    "Convert this date into the exact format demanded by the portal error message. "
+                    "Return JSON with reasoning and corrected_dob fields."
             )
-            fix_data = json.loads(fix_resp.text)
+            fix_response = client.chat.completions.create(
+                model=get_llm_model(),
+                messages=[{"role": "user", "content": correction_prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.0,
+            )
+            fix_data = SelfCorrectionSchema.model_validate(extract_json_content(fix_response)).model_dump()
             corrected_dob = fix_data["corrected_dob"]
 
             await page.fill("#dobFormatted", corrected_dob)
-            await record_step(page, 6, f"SELF-CORRECTION APPLIED: Gemini reformatted DOB from '{p['dob']}' -> '{corrected_dob}' ({fix_data['reasoning']}). Resubmitting form...")
+            await record_step(page, 6, f"SELF-CORRECTION APPLIED: OpenRouter reformatted DOB from '{p['dob']}' -> '{corrected_dob}' ({fix_data['reasoning']}). Resubmitting form...")
             await page.click("#submitPortalBtn")
 
         # STEP 5: Continue to the explicitly local demo OTP page. A real OTP
         # challenge is never guessed or auto-filled by this worker.
         await page.wait_for_selector("#otpCode", timeout=10000)
-        if not page.url.startswith("http://127.0.0.1:8080/gov-portal/verify"):
+        if not page.url.startswith(f"{spring_base_url}/gov-portal/verify"):
             raise RuntimeError("An OTP field appeared outside the local demo portal; stopping for human verification.")
         demo_otp = (await page.locator("#demoOtpHint").inner_text()).strip()
         if not demo_otp.isdigit() or len(demo_otp) != 6:

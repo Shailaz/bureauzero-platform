@@ -17,4 +17,4 @@ if ($LASTEXITCODE -ne 0) { throw "Python dependency installation failed." }
 & $VenvPython -m playwright install chromium
 if ($LASTEXITCODE -ne 0) { throw "Playwright Chromium installation failed." }
 
-Write-Host "Python dependencies and Chromium are ready. Configure GEMINI_API_KEY in the repository .env file if needed."
+Write-Host "Python dependencies and Chromium are ready. Configure OPENROUTER_API_KEY in the repository .env file if needed."

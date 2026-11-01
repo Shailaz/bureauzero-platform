@@ -2,7 +2,6 @@ package com.bureauzero.core.controller;
 
 import com.bureauzero.core.entity.CitizenApplication;
 import com.bureauzero.core.repository.ApplicationRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpSession;
@@ -16,10 +15,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/gov-portal")
-@RequiredArgsConstructor
 public class LegacyGovPortalController {
 
     private final ApplicationRepository repository;
+
+    public LegacyGovPortalController(ApplicationRepository repository) {
+        this.repository = repository;
+    }
 
     @GetMapping(value = "/apply", produces = MediaType.TEXT_HTML_VALUE)
     public String renderLegacyPortal() {
@@ -189,23 +191,23 @@ public class LegacyGovPortalController {
 
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hashBytes = digest.digest((receiptId + citizenIdNumber + now).getBytes(StandardCharsets.UTF_8));
-        String txHash = HexFormat.of().formatHex(hashBytes).substring(0, 20);
+        String txHash = HexFormat.of().formatHex(hashBytes);
 
-        CitizenApplication saved = repository.save(CitizenApplication.builder()
-                .receiptId(receiptId)
-                .fullName(fullName)
-                .dobFormatted(dobFormatted)
-                .age(age)
-                .gender(gender)
-                .domicileState(domicileState)
-                .socialCategory(socialCategory)
-                .annualIncome(annualIncome)
-                .schemeName(schemeName)
-                .citizenIdNumber(citizenIdNumber)
-                .status("SANCTION_PENDING_VERIFIED")
-                .cryptographicHash(txHash)
-                .submittedAt(now)
-                .build());
+        CitizenApplication application = new CitizenApplication();
+        application.setReceiptId(receiptId);
+        application.setFullName(fullName);
+        application.setDobFormatted(dobFormatted);
+        application.setAge(age);
+        application.setGender(gender);
+        application.setDomicileState(domicileState);
+        application.setSocialCategory(socialCategory);
+        application.setAnnualIncome(annualIncome);
+        application.setSchemeName(schemeName);
+        application.setCitizenIdNumber(citizenIdNumber);
+        application.setStatus("SANCTION_PENDING_VERIFIED");
+        application.setCryptographicHash(txHash);
+        application.setSubmittedAt(now);
+        CitizenApplication saved = repository.save(application);
         session.invalidate();
 
         return """

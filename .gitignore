@@ -21,6 +21,7 @@
 **/data/*.mv.db
 **/data/*.trace.db
 **/data/*.lock.db
+deploy/.env
 
 # IDE and OS files
 .idea/
