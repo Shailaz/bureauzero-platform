@@ -1,91 +1,163 @@
-# BureauZero Platform
+# 🏛️ BureauZero Platform
 
-BureauZero contains a Spring Boot dashboard and a Python FastAPI/Playwright worker.
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-teal.svg)](https://fastapi.tiangolo.com/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green.svg)](https://spring.io/projects/spring-boot)
+[![Playwright](https://img.shields.io/badge/Playwright-Async-orange.svg)](https://playwright.dev/python/)
+[![Gemini AI](https://img.shields.io/badge/Google%20Gemini-3.8%20Flash-purple.svg)](https://ai.google.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Prerequisites
+**BureauZero** is a full-stack, autonomous AI-driven platform engineered to eliminate bureaucratic friction and automate welfare claim submissions on complex legacy government portals.
 
-- Java 21
-- Maven 3.8+
-- Python 3.10+
-- Internet access for the initial Python package and Playwright browser installation
+By integrating a secure Spring Boot control dashboard with a high-performance Python FastAPI state engine, headless browser automation (Playwright), and **Google Gemini 3.8 Flash**, BureauZero autonomously handles DOM obstacles, validates citizen data, recovers from portal validation errors in real-time, and generates cryptographic audit receipts.
 
-## Configure secrets
+---
 
-Copy `.env.example` to `.env` in the repository root and set `OPENROUTER_API_KEY` to your own key. The Python worker loads this file automatically. Set `OPENROUTER_MODEL` to a model ID available in your OpenRouter account; the default `openrouter/free` selects an available free model. `.env` is ignored by Git; commit only `.env.example`.
+## 📐 System Architecture & Workflow
 
-Live myScheme discovery does not require an OpenRouter key. Document extraction and legacy DOB correction do. OpenRouter free models are rate limited; choose a paid model ID if the free route is unavailable or too slow.
+BureauZero uses a decoupled micro-architecture designed for resilience and auditability.
 
-## Setup the Python worker
-
-**Windows PowerShell** (from the repository root):
-
-```powershell
-Copy-Item .env.example .env
-notepad .env
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-./python-ai-agent/setup.ps1
+```text
++-----------------------------------------------------------------+
+|              Spring Boot Control Dashboard (Port 8080)          |
+|                                                                 |
+|  - User Session Management & Profile Uploads                    |
+|  - Cryptographic Audit Receipt & SHA-256 Verification Viewer    |
++-----------------------------------------------------------------+
+                              |
+                              | HTTP JSON Telemetry
+                              v
++-----------------------------------------------------------------+
+|           Python FastAPI AI & Playwright State Engine           |
+|                                                                 |
+|  1. Document Data Extraction (Gemini 3.8 Flash)                 |
+|  2. Headless Browser Navigation & DOM Inspection (Playwright)   |
+|  3. Obstacle Bypass (Dismissing Modal Intercepts)               |
+|  4. Self-Correction Loop (Catching 422/DOM Errors & Fixing DOB) |
+|  5. SHA-256 Cryptographic Receipt Scraping                      |
++-----------------------------------------------------------------+
 ```
 
-**macOS / Linux** (from the repository root):
+## 🗂️ Project Directory Structure
 
-```sh
-cp .env.example .env
-# Edit .env and add your key if needed.
-./python-ai-agent/setup.sh
+```text
+bureauzero-platform/
+│
+├── python-ai-agent/
+│   ├── venv/
+│   ├── ai_worker.py
+│   ├── start.py
+│   └── requirements.txt
+│
+├── src/
+│   ├── main/
+│   │   ├── java/com/bureauzero/
+│   │   └── resources/
+│   │       ├── static/
+│   │       └── templates/
+│   └── pom.xml
+│
+└── README.md
 ```
 
-## Run the application
+## 🚀 Key Features & Capabilities
 
-Start the worker in one terminal:
+- **Intelligent Document Parsing:** Upload citizen ID cards, certificates, or identity proofs to extract structured demographic parameters using Gemini 3.8 Flash with rigid Pydantic JSON schema enforcement.
+- **Autonomous DOM Navigation:** Headless or headed Chromium automation via Playwright to navigate portal application flows reliably.
+- **Dynamic Obstacle Bypassing:** Automatically detects and dismisses intrusive layout obstacles, such as blocking Gazette Circular modal popups, that disrupt standard web scrapers.
+- **AI-Powered Self-Correction Loop:** When legacy portal validation rejects input fields (e.g., non-standard Date of Birth formats), the agent captures the exact DOM error text, queries Gemini 3.8 Flash for a contextual format correction, patches the input field, and resubmits seamlessly.
+- **Cryptographic Audit Signatures:** Scrapes official transaction hashes, registry statuses, and unique receipt IDs upon successful filing.
 
-```powershell
-# Windows PowerShell
-./python-ai-agent/run.ps1
+## 📊 Core API Endpoints
+
+### 1. Extract Profile Telemetry
+
+- **Endpoint:** `POST /ai/extract-profile`
+- **Payload:** Multipart form-data containing an official citizen document/image file.
+- **Response:** Returns verified structured JSON matching `CitizenSchema`.
+
+Example response:
+
+```json
+{
+  "FullName": "string",
+  "DOB": "YYYY-MM-DD",
+  "Age": "integer",
+  "Gender": "string",
+  "Domicile State": "string",
+  "Social Category": "string",
+  "Annual Income": "number",
+  "Citizen ID": "string",
+  "Recommended Scheme": "string"
+}
 ```
 
-```sh
-# macOS / Linux
-./python-ai-agent/run.sh
-```
+### 2. Execute Autonomous Workflow
 
-Start the Spring Boot dashboard in another terminal, from `spring-boot-core`:
+- **Endpoint:** `POST /ai/execute-workflow`
+- **Payload:** JSON containing citizen profile data and `target_mode` (`spring_legacy_portal` or `myscheme_live_discovery`).
+- **Response:** Returns execution status, agent reasoning trace logs with base64 screenshots per step, and final cryptographic receipt details.
 
-```sh
-mvn spring-boot:run
-```
+## 🛠️ Installation & Quickstart Guide
 
-Open <http://localhost:8080>. The FastAPI worker listens on <http://127.0.0.1:8001>.
+### Prerequisites
 
-Set `PLAYWRIGHT_HEADLESS=false` in `.env` to show the browser during automation.
+- Java Development Kit (JDK 17+) and Maven
+- Python 3.10+ installed and added to system PATH
+- Google Gemini API Key (`GEMINI_API_KEY`)
 
-## Deploy on a VPS with Docker Compose
+### Step 1: Clone the Repository
 
-The `deploy` directory contains Docker images and a Compose stack for the Spring Boot app and Playwright worker. The H2 receipt database is stored in the named `bureauzero-data` volume. The Python worker is reachable only on the Compose network; only the dashboard port is published.
-
-On a Linux VPS with Docker Engine and the Compose plugin installed:
-
-```sh
-git clone <your-repository-url> bureauzero-platform
+```bash
+git clone https://github.com/Shailaz/bureauzero-platform.git
 cd bureauzero-platform
-cp deploy/.env.example deploy/.env
 ```
 
-Edit `deploy/.env` and set `OPENROUTER_API_KEY` to enable document extraction and DOB correction. Set `OPENROUTER_MODEL` if you want a particular model. Live myScheme discovery and the demo claim workflow can run without it. Then build and start the stack:
+### Step 2: Set Up the Python AI Worker
 
-```sh
-docker compose --env-file deploy/.env -f deploy/compose.yaml up -d --build
-docker compose --env-file deploy/.env -f deploy/compose.yaml logs -f
+Navigate to the Python worker directory, configure the virtual environment, and install dependencies.
+
+```powershell
+cd python-ai-agent
+python -m venv venv
+
+.\venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
+
+playwright install chromium
 ```
 
-Open `http://<your-vps-ip>:8080` (or the port set by `APP_PORT`). For a public site, put a TLS reverse proxy such as Caddy or Nginx in front of the app and allow inbound HTTPS in the VPS firewall. Do not publish port 8001 or enable the H2 console. The default H2 database is suitable for a single app instance; back up the `bureauzero-data` Docker volume regularly. For multi-instance deployments, use a managed PostgreSQL database instead of H2.
+### Step 3: Configure Your Gemini API Key
 
-To update after pushing code:
+Set your Gemini API key as an environment variable in your PowerShell session.
 
-```sh
-git pull
-docker compose --env-file deploy/.env -f deploy/compose.yaml up -d --build
+```powershell
+$env:GEMINI_API_KEY = "your_actual_api_key_here"
 ```
 
-## Deploy on Railway
+### Step 4: Run the AI State Engine
 
-For a hosted hackathon demo, Railway can run the dashboard and Playwright worker as separate services. Follow [railway/README.md](railway/README.md) to create the two services, configure their private URLs, attach persistent storage for receipts, and generate the dashboard’s public URL. The Railway project configuration is in [.railway/railway.ts](.railway/railway.ts).
+Launch the FastAPI server via Uvicorn.
+
+```powershell
+python start.py
+```
+
+The server will initialize on:
+
+`http://127.0.0.1:8001`
+
+with Windows Selector Event Loop optimizations.
+
+## 💡 Tech Stack
+
+- **AI & Machine Learning:** Google GenAI SDK (`gemini-3.8-flash`), Pydantic structural validation
+- **Browser Automation:** Playwright Async API for Python, Chromium
+- **Backend State Engine:** Python, FastAPI, Uvicorn
+- **Control Center Dashboard:** Java, Spring Boot, Thymeleaf
+- **OS Environment Compatibility:** Windows PowerShell and Command Prompt optimized with Selector Event Loop policies
+
+## 📜 License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
