@@ -23,9 +23,8 @@ services:
       AI_WORKER_PORT: "8001"
       SPRING_BOOT_BASE_URL: http://app:8080
       PLAYWRIGHT_HEADLESS: "true"
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENAI_URL: ${OPENAI_URL:-https://openrouter.ai/api/v1/chat/completions}
-      OPENAI_MODEL: ${OPENAI_MODEL:-openai/gpt-4.1-mini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
 
 volumes:
   bureauzero-data:

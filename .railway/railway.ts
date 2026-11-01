@@ -45,9 +45,8 @@ export default defineRailway(() => {
       AI_WORKER_PORT: "8001",
       SPRING_BOOT_BASE_URL: "http://${{app.RAILWAY_PRIVATE_DOMAIN}}:${{app.PORT}}",
       PLAYWRIGHT_HEADLESS: "true",
-      OPENROUTER_API_KEY: "${{shared.OPENROUTER_API_KEY}}",
-      OPENAI_URL: "https://openrouter.ai/api/v1/chat/completions",
-      OPENAI_MODEL: "openai/gpt-4.1-mini",
+      GEMINI_API_KEY: "${{shared.GEMINI_API_KEY}}",
+      GEMINI_MODEL: "gemini-3.8-flash",
     },
     deploy: {
       restartPolicyType: "ON_FAILURE",

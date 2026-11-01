@@ -1,22 +1,18 @@
 import os
 
-from openai import OpenAI
+from google import genai
 
 
 def main() -> int:
-    api_key = os.environ.get("OPENROUTER_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("OPENROUTER_API_KEY is not set in this terminal.")
+        print("GEMINI_API_KEY is not set in this terminal.")
         return 1
 
-    endpoint = os.environ.get(
-        "OPENAI_URL", "https://openrouter.ai/api/v1/chat/completions"
-    ).rstrip("/")
-    if endpoint.endswith("/chat/completions"):
-        endpoint = endpoint[: -len("/chat/completions")]
-    client = OpenAI(api_key=api_key, base_url=endpoint)
-    for model in client.models.list().data:
-        print(model.id)
+    client = genai.Client(api_key=api_key)
+    for model in client.models.list():
+        if "flash" in model.name.lower():
+            print(model.name)
     return 0
 
 

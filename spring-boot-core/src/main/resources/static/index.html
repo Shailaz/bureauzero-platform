@@ -156,7 +156,7 @@ input[type=file]::file-selector-button{background:var(--g);color:#fff;border:0;b
 <section class="feats" id="features">
   <div class="wrap">
     <h2>Four jobs the agent does so you don't have to</h2>
-    <div class="f rv"><h3>Reads your documents</h3><p>Upload a citizen ID, income certificate or caste certificate. OpenAI GPT-4.1 mini extracts your name, date of birth, state, category and income, and suggests a scheme that fits.</p></div>
+    <div class="f rv"><h3>Reads your documents</h3><p>Upload a citizen ID, income certificate or caste certificate. Gemini extracts your name, date of birth, state, category and income, and suggests a scheme that fits.</p></div>
     <div class="f rv"><h3>Finds schemes on myScheme</h3><p>Use the dashboard discovery button to enter age, gender and state in the live myScheme finder and see matching schemes with links. The legacy portal agent remains available separately.</p></div>
     <div class="f rv"><h3>Fixes rejected forms</h3><p>If the portal turns an entry down, the agent reads the error message, corrects the value and submits again, instead of stopping and asking you to start over.</p></div>
     <div class="f rv"><h3>Keeps a receipt trail</h3><p>Each submission is saved with its receipt ID and SHA-256 signature, so you can look up what was filed and when.</p></div>
@@ -184,7 +184,7 @@ input[type=file]::file-selector-button{background:var(--g);color:#fff;border:0;b
     <div class="grid">
       <div class="col">
         <div class="pn">
-          <div class="th"><h3>1. Upload a document</h3><span class="tag">OpenAI GPT-4.1 mini</span></div>
+          <div class="th"><h3>1. Upload a document</h3><span class="tag">Read by Gemini</span></div>
           <p class="sub">Choose an ID or certificate (image or PDF) and the details fill in below.</p>
           <input type="file" id="docInput" accept="image/*,.pdf">
           <button onclick="extractDocument()" id="extractBtn" class="btn btn-o" style="width:100%">Extract citizen details</button>
@@ -362,9 +362,9 @@ async function extractDocument() {
   const fileInput = document.getElementById("docInput");
   if (!fileInput.files.length) { alert("Choose an ID or certificate image or PDF first."); return; }
   const btn = document.getElementById("extractBtn");
-  btn.innerText = "Reading document with OpenAI GPT-4.1 mini…";
+  btn.innerText = "Reading document with Gemini…";
   btn.disabled = true;
-  logTerminal("READING", "Sending the document to Spring Boot and the OpenAI GPT-4.1 mini extractor.");
+  logTerminal("READING", "Sending the document to Spring Boot and the Gemini extractor.");
   const formData = new FormData();
   formData.append("file", fileInput.files[0]);
   try {
