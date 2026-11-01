@@ -13,7 +13,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel,Field, AliasChoices
 from openai import OpenAI
 from playwright.async_api import async_playwright
 
@@ -70,9 +70,18 @@ class CitizenSchema(BaseModel):
     socialCategory: str
     annualIncome: int
     citizenIdNumber: str
-    recommendedScheme: str
 
-    model_config = {"extra": "forbid"}
+    recommendedScheme: str = Field(
+        validation_alias=AliasChoices(
+            "recommendedScheme",
+            "recommended_scheme"
+        )
+    )
+
+    model_config = {
+        "extra": "forbid",
+        "populate_by_name": True
+    }
 
 class SelfCorrectionSchema(BaseModel):
     reasoning: str
