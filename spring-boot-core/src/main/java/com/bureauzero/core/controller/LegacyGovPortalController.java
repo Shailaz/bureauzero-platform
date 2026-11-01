@@ -171,7 +171,7 @@ public class LegacyGovPortalController {
             return renderOtpChallenge("The demo code did not match. Enter the code shown below.");
         }
 
-        String fullName = (String) session.getAttribute("fullName");
+        String fullName = (String) session.getAttribute("Name");
         String dobFormatted = (String) session.getAttribute("dobFormatted");
         Integer age = (Integer) session.getAttribute("age");
         String gender = (String) session.getAttribute("gender");
