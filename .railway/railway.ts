@@ -23,7 +23,7 @@ export default defineRailway(() => {
     env: {
       BUREAUZERO_DATA_DIR: "/data",
       H2_CONSOLE_ENABLED: "false",
-      PYTHON_AI_URL: "http://${{ai.RAILWAY_PRIVATE_DOMAIN}}:8001",
+      PYTHON_AI_URL: "http://${{ai.RAILWAY_PRIVATE_DOMAIN}}:${{ai.PORT}}",
     },
     deploy: {
       restartPolicyType: "ON_FAILURE",

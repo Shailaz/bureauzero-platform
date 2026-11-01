@@ -9,11 +9,12 @@ import os
 import json
 import base64
 import logging
+from typing import Literal
 from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel,Field, AliasChoices
+from pydantic import BaseModel, Field, AliasChoices, ConfigDict
 from google import genai
 from google.genai import types
 from playwright.async_api import async_playwright
@@ -38,7 +39,10 @@ async def startup_event():
 def get_llm_client():
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is required for document extraction and legacy date correction.")
+        raise HTTPException(
+            status_code=503,
+            detail="GEMINI_API_KEY is required for document extraction and DOB correction.",
+        )
     return genai.Client(api_key=api_key)
 
 def get_llm_model():
@@ -54,26 +58,46 @@ def extract_json_content(response):
     return json.loads(text)
 
 class CitizenSchema(BaseModel):
-    fullName: str
-    dob: str
-    age: int
-    gender: str
-    domicileState: str
-    socialCategory: str
-    annualIncome: int
-    citizenIdNumber: str
+    fullName: str = Field(min_length=1)
+    dob: str = Field(min_length=1)
+    age: int = Field(ge=0, le=130)
+    gender: Literal["Male", "Female", "Other", "Transgender"]
+    domicileState: str = Field(min_length=1)
+    socialCategory: Literal["General", "OBC", "SC", "ST"]
+    annualIncome: int = Field(ge=0)
+    citizenIdNumber: str = Field(min_length=1)
 
-    recommendedScheme: str = Field(
+    recommendedScheme: Literal[
+        "National Post-Matric Merit Scholarship",
+        "Digital India Student Hardware Grant",
+        "Mukhyamantri Yuva Swarojgar Subsidy",
+    ] = Field(
         validation_alias=AliasChoices(
             "recommendedScheme",
             "recommended_scheme"
         )
     )
 
-    model_config = {
-        "extra": "forbid",
-        "populate_by_name": True
-    }
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
+
+class ExtractedCitizenSchema(BaseModel):
+    fullName: str
+    dob: str
+    age: int
+    gender: Literal["Male", "Female", "Other"]
+    domicileState: str
+    socialCategory: Literal["General", "OBC", "SC", "ST"]
+    annualIncome: int
+    citizenIdNumber: str
+    recommendedScheme: Literal[
+        "National Post-Matric Merit Scholarship",
+        "Digital India Student Hardware Grant",
+        "Mukhyamantri Yuva Swarojgar Subsidy",
+    ] = Field(
+        validation_alias=AliasChoices("recommendedScheme", "recommended_scheme")
+    )
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
 class SelfCorrectionSchema(BaseModel):
     reasoning: str
@@ -85,31 +109,46 @@ async def extract_profile(file: UploadFile = File(...)):
     client = get_llm_client()
     prompt = (
         "Extract the citizen's demographic details from this official document or ID card. "
-        "If any field is missing on the document, infer a realistic valid value based on visible context. "
+        "Do not guess or invent personal details. If a value is not visible, return an empty string for text fields and 0 for numeric fields so the user can fill it in. "
+        "Map gender to exactly one of: 'Male', 'Female', or 'Other'. "
         "Map domicileState to one of: 'Assam', 'Delhi', 'Karnataka', or 'Maharashtra'. "
         "Map socialCategory to one of: 'General', 'OBC', 'SC', or 'ST'. "
         "Map recommendedScheme to one of: 'National Post-Matric Merit Scholarship', "
         "'Digital India Student Hardware Grant', or 'Mukhyamantri Yuva Swarojgar Subsidy'."
     )
 
-    mime_type = file.content_type or "application/octet-stream"
+    mime_type = file.content_type
+    if not mime_type or mime_type == "application/octet-stream":
+        import mimetypes
+        mime_type = mimetypes.guess_type(file.filename or "")[0] or mime_type or "application/octet-stream"
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="The uploaded document is empty.")
     if mime_type != "application/pdf" and not mime_type.startswith("image/"):
-        raise ValueError("Upload a PDF or image file for profile extraction.")
+        raise HTTPException(status_code=415, detail="Upload a PDF or image file for profile extraction.")
     response = client.models.generate_content(
         model=get_llm_model(),
         contents=[prompt, types.Part.from_bytes(data=raw_bytes, mime_type=mime_type)],
-        config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.1),
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=ExtractedCitizenSchema,
+            temperature=0.1,
+        ),
     )
-    profile = CitizenSchema.model_validate(extract_json_content(response))
+    profile = ExtractedCitizenSchema.model_validate(extract_json_content(response))
     return {"status": "EXTRACTED", "profile": profile.model_dump()}
 
 class AgentJobRequest(BaseModel):
-    profile: dict
-    target_mode: str = "spring_legacy_portal"
+    profile: CitizenSchema
+    target_mode: Literal["spring_legacy_portal", "myscheme_live_discovery"] = "spring_legacy_portal"
 
 @app.post("/ai/execute-workflow")
 async def execute_workflow(req: AgentJobRequest):
-    p = req.profile
+    p = req.profile.model_dump()
+    if req.target_mode == "spring_legacy_portal":
+        if p["gender"] not in {"Male", "Female", "Other"}:
+            raise HTTPException(status_code=422, detail="The legacy portal accepts Male, Female, or Other for gender.")
+        if p["domicileState"] not in {"Assam", "Delhi", "Karnataka", "Maharashtra"}:
+            raise HTTPException(status_code=422, detail="The legacy portal accepts Assam, Delhi, Karnataka, or Maharashtra for domicile state.")
     trace_logs = []
     headless = os.environ.get("PLAYWRIGHT_HEADLESS", "true").lower() not in {"0", "false", "no"}
 
@@ -194,7 +233,6 @@ async def execute_workflow(req: AgentJobRequest):
             }
 
         # MODE 1: Autonomous Execution on Legacy Gov Portal
-        client = get_llm_client()
         spring_base_url = os.environ.get("SPRING_BOOT_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
         target_url = f"{spring_base_url}/gov-portal/apply"
         await page.goto(target_url)
@@ -234,10 +272,15 @@ async def execute_workflow(req: AgentJobRequest):
                     "Convert this date into the exact format demanded by the portal error message. "
                     "Return JSON with reasoning and corrected_dob fields."
             )
+            client = get_llm_client()
             fix_response = client.models.generate_content(
                 model=get_llm_model(),
                 contents=correction_prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.0),
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=SelfCorrectionSchema,
+                    temperature=0.0,
+                ),
             )
             fix_data = SelfCorrectionSchema.model_validate(extract_json_content(fix_response)).model_dump()
             corrected_dob = fix_data["corrected_dob"]

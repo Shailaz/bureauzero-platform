@@ -369,17 +369,28 @@ async function extractDocument() {
   formData.append("file", fileInput.files[0]);
   try {
     const res = await fetch("/api/v1/ingest-document", { method: "POST", body: formData });
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (_) {
+      throw new Error(`Document extraction failed (HTTP ${res.status}). Check that the AI worker is running and configured.`);
+    }
+    if (!res.ok) {
+      throw new Error(data.detail || data.error || `Document extraction failed (HTTP ${res.status}).`);
+    }
     const p = data.profile;
+    if (!p || typeof p !== "object") {
+      throw new Error("The AI worker returned no extracted profile. Check its logs and Gemini API configuration.");
+    }
     document.getElementById("p_fullName").value = p.fullName || "";
-    document.getElementById("p_dob").value = p.dob || "2004-08-15";
-    document.getElementById("p_age").value = p.age || 21;
-    document.getElementById("p_gender").value = p.gender || "Male";
-    document.getElementById("p_state").value = p.domicileState || "Assam";
-    document.getElementById("p_category").value = p.socialCategory || "General";
-    document.getElementById("p_income").value = p.annualIncome || 120000;
-    document.getElementById("p_scheme").value = p.recommendedScheme || "National Post-Matric Merit Scholarship";
-    document.getElementById("p_idNum").value = p.citizenIdNumber || "IND-DOC-88412";
+    document.getElementById("p_dob").value = p.dob ?? "";
+    document.getElementById("p_age").value = p.age ?? "";
+    document.getElementById("p_gender").value = p.gender ?? "";
+    document.getElementById("p_state").value = p.domicileState ?? "";
+    document.getElementById("p_category").value = p.socialCategory ?? "";
+    document.getElementById("p_income").value = p.annualIncome ?? "";
+    document.getElementById("p_scheme").value = p.recommendedScheme ?? "";
+    document.getElementById("p_idNum").value = p.citizenIdNumber ?? "";
     logTerminal("EXTRACTED", `Details read for ${p.fullName} (ID: ${p.citizenIdNumber})`, "ok");
   } catch (err) {
     logTerminal("READ FAILED", err.message, "err");
@@ -393,14 +404,20 @@ async function dispatchAgent(mode) {
   const profile = {
     fullName: document.getElementById("p_fullName").value,
     dob: document.getElementById("p_dob").value,
-    age: parseInt(document.getElementById("p_age").value || "21"),
+    age: parseInt(document.getElementById("p_age").value, 10),
     gender: document.getElementById("p_gender").value,
     domicileState: document.getElementById("p_state").value,
     socialCategory: document.getElementById("p_category").value,
-    annualIncome: parseInt(document.getElementById("p_income").value || "120000"),
+    annualIncome: parseInt(document.getElementById("p_income").value, 10),
     recommendedScheme: document.getElementById("p_scheme").value,
     citizenIdNumber: document.getElementById("p_idNum").value
   };
+  const missing = ["fullName", "dob", "gender", "domicileState", "socialCategory", "recommendedScheme", "citizenIdNumber"]
+    .filter(key => !String(profile[key] || "").trim());
+  if (missing.length || !Number.isInteger(profile.age) || profile.age < 0 || !Number.isInteger(profile.annualIncome) || profile.annualIncome < 0) {
+    logTerminal("PROFILE INCOMPLETE", "Fill in all profile fields and enter valid non-negative age and income values before starting the agent.", "err");
+    return;
+  }
   const btns = [document.getElementById("launchBtn"), document.getElementById("discBtn")];
   const label = btns.map(b => b.innerText);
   btns.forEach(b => b.disabled = true);
@@ -420,7 +437,15 @@ async function dispatchAgent(mode) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ profile: profile, target_mode: mode })
     });
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (_) {
+      throw new Error(`The agent request failed (HTTP ${res.status}). Check that the AI worker is running.`);
+    }
+    if (!res.ok) {
+      throw new Error(data.detail || data.error || `The agent request failed (HTTP ${res.status}).`);
+    }
     const traces = data.agent_reasoning_trace || [];
     showAgentTrace(traces);
 

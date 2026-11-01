@@ -171,7 +171,7 @@ public class LegacyGovPortalController {
             return renderOtpChallenge("The demo code did not match. Enter the code shown below.");
         }
 
-        String fullName = (String) session.getAttribute("Name");
+        String fullName = (String) session.getAttribute("fullName");
         String dobFormatted = (String) session.getAttribute("dobFormatted");
         Integer age = (Integer) session.getAttribute("age");
         String gender = (String) session.getAttribute("gender");
@@ -228,13 +228,22 @@ public class LegacyGovPortalController {
         </html>
         """.formatted(
                 saved.getReceiptId(),
-                saved.getFullName(),
-                saved.getDobFormatted(),
-                saved.getDomicileState(),
-                saved.getSchemeName(),
-                saved.getCryptographicHash(),
-                saved.getStatus()
+                escapeHtml(saved.getFullName()),
+                escapeHtml(saved.getDobFormatted()),
+                escapeHtml(saved.getDomicileState()),
+                escapeHtml(saved.getSchemeName()),
+                escapeHtml(saved.getCryptographicHash()),
+                escapeHtml(saved.getStatus())
         );
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) return "";
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private String renderOtpChallenge(String errorMessage) {

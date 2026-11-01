@@ -7,11 +7,14 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.io.Resource;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -35,7 +38,12 @@ public class MissionControlController {
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", file.getResource());
+        HttpHeaders fileHeaders = new HttpHeaders();
+        if (file.getContentType() != null) {
+            fileHeaders.setContentType(MediaType.parseMediaType(file.getContentType()));
+        }
+        HttpEntity<Resource> filePart = new HttpEntity<>(file.getResource(), fileHeaders);
+        body.add("file", filePart);
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         ResponseEntity response = restTemplate.postForEntity(
@@ -74,5 +82,18 @@ public class MissionControlController {
     @GetMapping("/registry-ledger")
     public List<CitizenApplication> getLiveRegistryLedger() {
         return repository.findAll();
+    }
+
+    @ExceptionHandler(ResourceAccessException.class)
+    public ResponseEntity<Map<String, String>> handleAiWorkerUnavailable(ResourceAccessException exception) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "The AI worker is unavailable. Start it and confirm GEMINI_API_KEY is configured."));
+    }
+
+    @ExceptionHandler(RestClientResponseException.class)
+    public ResponseEntity<Map<String, String>> handleAiWorkerError(RestClientResponseException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("error", "The AI worker rejected the request (HTTP "
+                        + exception.getStatusCode().value() + "). Check the document format, profile fields, and worker logs."));
     }
 }

@@ -49,8 +49,8 @@ bureauzero-platform/
 │   ├── start.py
 │   └── requirements.txt
 │
-├── src/
-│   ├── main/
+├── spring-boot-core/
+│   ├── src/main/
 │   │   ├── java/com/bureauzero/
 │   │   └── resources/
 │   │       ├── static/
@@ -80,15 +80,15 @@ Example response:
 
 ```json
 {
-  "FullName": "string",
-  "DOB": "YYYY-MM-DD",
-  "Age": "integer",
-  "Gender": "string",
-  "Domicile State": "string",
-  "Social Category": "string",
-  "Annual Income": "number",
-  "Citizen ID": "string",
-  "Recommended Scheme": "string"
+  "fullName": "string",
+  "dob": "YYYY-MM-DD",
+  "age": 22,
+  "gender": "Male",
+  "domicileState": "Assam",
+  "socialCategory": "General",
+  "annualIncome": 145000,
+  "citizenIdNumber": "string",
+  "recommendedScheme": "National Post-Matric Merit Scholarship"
 }
 ```
 
@@ -102,7 +102,7 @@ Example response:
 
 ### Prerequisites
 
-- Java Development Kit (JDK 17+) and Maven
+- Java Development Kit (JDK 21+) and Maven
 - Python 3.10+ installed and added to system PATH
 - Google Gemini API key (`GEMINI_API_KEY`)
 
